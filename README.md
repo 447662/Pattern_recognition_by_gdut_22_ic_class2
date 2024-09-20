@@ -1,0 +1,2 @@
+# Pattern_recognition_by_gdut_22_ic_class2
+24年广工模式识别选修课作业，22级集成2班小组课程报告
