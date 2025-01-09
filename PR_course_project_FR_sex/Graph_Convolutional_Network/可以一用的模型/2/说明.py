@@ -1,5 +1,6 @@
 # 本模型超参数为
 # 超参数配置
+'''
 config = {
     'input_dim': 3,  # 输入特征维度（3D 坐标）
     'hidden_dim': 256,  # 隐藏层的维度
@@ -17,3 +18,4 @@ config = {
     'early_stopping_patience': 80,  # 早停法的耐心值
     'early_stopping_start_epoch': 200,  # 从第200轮开始使用早停法
 }
+'''
