@@ -1,0 +1,85 @@
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import classification_report, confusion_matrix
+import matplotlib.pyplot as plt
+import numpy as np
+
+dataset_path = 'C:/datasets/gender_data'
+df = pd.read_csv(dataset_path)
+
+X =  df.drop(columns=['gender']).values
+y =  df['gender'].values
+
+# 数据预处理：划分训练集和测试集，进行标准化
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+# 1. 训练 KNN 模型：选择不同的 K 值
+k_range = range(1, 21)  # K 值范围
+train_accuracies = []
+test_accuracies = []
+
+# 训练不同 K 值的模型并计算准确率
+for k in k_range:
+    knn = KNeighborsClassifier(n_neighbors=k)
+    knn.fit(X_train, y_train)
+
+    train_accuracies.append(knn.score(X_train, y_train))  # 训练集准确率
+    test_accuracies.append(knn.score(X_test, y_test))  # 测试集准确率
+
+# 2. 选择最佳 K 值：K 值对应的测试集准确率最大
+best_k = k_range[np.argmax(test_accuracies)]
+print(f"Best K value: {best_k} with Test Accuracy = {test_accuracies[np.argmax(test_accuracies)]:.4f}")
+
+# 3. 可视化 K 值学习曲线
+plt.figure(figsize=(8, 6))
+plt.plot(k_range, train_accuracies, marker='o', color='r', label='Train Accuracy')
+plt.plot(k_range, test_accuracies, marker='x', color='b', label='Test Accuracy')
+plt.title('KNN: K Value vs Accuracy')
+plt.xlabel('K Value')
+plt.ylabel('Accuracy')
+plt.xticks(k_range)
+plt.grid(True)
+plt.legend()
+plt.show()
+
+# 4. 超参数调整：使用交叉验证选择最佳 K 值
+cross_val_scores = []
+for k in k_range:
+    knn = KNeighborsClassifier(n_neighbors=k)
+    cv_score = cross_val_score(knn, X_train, y_train, cv=5, scoring='accuracy').mean()
+    cross_val_scores.append(cv_score)
+
+# 找到最佳 K 值
+best_k_cv = k_range[np.argmax(cross_val_scores)]
+print(
+    f"Best K value from cross-validation: {best_k_cv} with Cross-Validation Accuracy = {cross_val_scores[np.argmax(cross_val_scores)]:.4f}")
+
+# 绘制交叉验证准确率曲线
+plt.figure(figsize=(8, 6))
+plt.plot(k_range, cross_val_scores, marker='o', color='g', label='Cross-Validation Accuracy')
+plt.title('KNN: K Value vs Cross-Validation Accuracy')
+plt.xlabel('K Value')
+plt.ylabel('Cross-Validation Accuracy')
+plt.xticks(k_range)
+plt.grid(True)
+plt.legend()
+plt.show()
+
+# 5. 训练最终模型（使用最佳 K 值）
+final_knn = KNeighborsClassifier(n_neighbors=best_k_cv)
+final_knn.fit(X_train, y_train)
+
+# 6. 评估最终模型：预测测试集，生成分类报告和混淆矩阵
+y_pred = final_knn.predict(X_test)
+
+# 输出分类报告
+print("Classification Report:")
+print(classification_report(y_test, y_pred))
+
+# 输出混淆矩阵
+print("Confusion Matrix:")
+print(confusion_matrix(y_test, y_pred))
