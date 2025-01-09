@@ -5,7 +5,6 @@ import torch.optim as optim
 import torch.nn.functional as F
 from torch_geometric.loader import DataLoader
 from torch_geometric.nn import GCNConv, global_mean_pool
-from torch.optim.lr_scheduler import LambdaLR
 
 # 超参数配置
 config = {
@@ -14,14 +13,12 @@ config = {
     'output_dim': 2,  # 输出维度（2：性别男女）
     'learning_rate': 0.002,  # 初始学习率
     'batch_size': 32,  # 每个批次的数据量
-    'epochs': 600,  # 训练的轮数
+    'epochs': 400,  # 训练的轮数
     'save_interval': 5,  # 每几个epoch保存一次模型
     'print_every_sample': 5,  # 每几个样本汇报一次效果
     'save_dir': 'D:/桌面/homework/patternrecognition/Graph_Convolutional_Network/saved_models',  # 模型保存路径
     'log_file': 'D:/桌面/homework/patternrecognition/Graph_Convolutional_Network/training.txt',  # 训练日志文件路径
     'threshold': 0.5,  # 判断为正样本的置信度
-    'lr_stable_epochs': 400,  # 固定学习率的轮数
-    'lr_decay_epochs': 200,  # 学习率衰减的轮数
     'early_stopping_patience': 80,  # 早停法的耐心值
     'early_stopping_start_epoch': 200,  # 从第200轮开始使用早停法
 }
@@ -87,22 +84,6 @@ model = GraphConvolutionalNetwork(input_dim=config['input_dim'], hidden_dim=conf
 criterion = torch.nn.CrossEntropyLoss()  # 使用 CrossEntropyLoss，因为输出是两个类别的 logits
 optimizer = optim.Adam(model.parameters(), lr=config['learning_rate'])
 
-# 学习率调度器
-def learning_rate_schedule(epoch, stable_epochs, decay_epochs, min_lr=0.0001):
-    """
-    定义学习率调度函数。
-    """
-    # 在前 stable_epochs 轮次，学习率保持不变
-    if epoch < stable_epochs:
-        return 1.0
-    # 在接下来的 decay_epochs 轮次，逐步递减学习率
-    elif epoch < stable_epochs + decay_epochs:
-        return 1.0 - (epoch - stable_epochs) / decay_epochs
-    else:
-        return min_lr  # 学习率保持在 min_lr
-
-scheduler = LambdaLR(optimizer, lr_lambda=lambda epoch: learning_rate_schedule(epoch, config['lr_stable_epochs'], config['lr_decay_epochs']))
-
 # 获取当前学习率
 def get_current_learning_rate(optimizer):
     """
@@ -119,7 +100,7 @@ def log_training_progress(epoch, train_loss, train_accuracy, test_accuracy, lr, 
     with open(log_file, 'a') as f:
         f.write(f"Epoch {epoch}, Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, Test Accuracy: {test_accuracy:.4f}, lr: {lr}\n")
 
-def perform_training(model, data_loader, optimizer, criterion, scheduler, epoch):
+def perform_training(model, data_loader, optimizer, criterion, epoch):
     """
     执行模型的训练过程。
     """
@@ -155,9 +136,6 @@ def perform_training(model, data_loader, optimizer, criterion, scheduler, epoch)
 
     # 打印总损失和准确率
     print(f"Training Loss: {average_loss:.4f}, Accuracy: {accuracy:.4f}")
-
-    # 更新学习率
-    scheduler.step()
 
     return average_loss, accuracy
 
@@ -195,7 +173,7 @@ patience_counter = 0  # 计数器，记录自上次性能改善以来经过的ep
 # 训练和测试
 for epoch in range(config['epochs']):
     # 训练模型
-    train_loss, train_accuracy = perform_training(model, train_loader, optimizer, criterion, scheduler, epoch)
+    train_loss, train_accuracy = perform_training(model, train_loader, optimizer, criterion, epoch)
     print(f"Epoch {epoch + 1}/{config['epochs']}, Loss: {train_loss:.4f}, Accuracy: {train_accuracy:.4f}, lr: {get_current_learning_rate(optimizer)}")
 
     # 测试模型
@@ -221,9 +199,6 @@ for epoch in range(config['epochs']):
             if patience_counter >= config['early_stopping_patience']:
                 print(f"停止训练：在第 {epoch + 1} 轮后 {config['early_stopping_patience']} 轮内未观察到性能改善")
                 break
-
-    # 更新学习率
-    scheduler.step()
 
 input('Training completed, press Enter to test accuracy')
 # 测试模型
